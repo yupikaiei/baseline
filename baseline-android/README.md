@@ -39,10 +39,10 @@ Every push to `main` builds an APK in CI and attaches it to the rolling release:
 Open that link on the phone, download the `.apk`, tap it, and allow installing from that source
 when Android prompts. Nothing else is needed — the release asset downloads without a GitHub session.
 
-CI keeps the signing key in the Actions cache so consecutive builds share a signature and install
-over each other. If that cache is evicted the key is regenerated, the signature changes, and Android
-will refuse the update until the old app is uninstalled. The APK is also uploaded as a workflow
-artifact on every run.
+The CI build is signed with the **same key** as local builds (stored as the encrypted
+`BASELINE_KEYSTORE_B64` repo secret), so any build installs over any other and your logged data
+survives upgrades. This matters: Android refuses an update from a different signer, and the only
+remedy is an uninstall, which deletes the database.
 
 Release APK: **12.5 MB**. Requires Android 8.0+ (minSdk 26, for `java.time` without desugaring).
 Toolchain: AGP 8.13.2, Kotlin 2.2.21, Compose BOM 2025.12.01, Gradle 8.14.

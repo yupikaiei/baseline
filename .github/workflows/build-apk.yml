@@ -20,8 +20,20 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # The runner ships an Android SDK but its licenses are not accepted, and
+      # android-actions/setup-android fails on the preinstalled sdkmanager version.
+      # Accept them directly and install exactly the platform this build needs.
+      - name: Configure Android SDK
+        run: |
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(find "$SDK" -name sdkmanager -type f | sort | tail -1)"
+          echo "Using $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          yes | "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0" > /dev/null 2>&1 || true
+          echo "sdk.dir=$SDK" > baseline-android/local.properties
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "platforms:"; ls "$SDK/platforms" 2>/dev/null || true
+          echo "build-tools:"; ls "$SDK/build-tools" 2>/dev/null || true
 
       # The signing key must stay the same between builds, otherwise every new APK
       # has a different signature and the phone demands an uninstall first.

@@ -7,6 +7,7 @@ import com.baseline.app.data.Checkin
 import com.baseline.app.data.Experiment
 import com.baseline.app.data.ExperimentStatus
 import com.baseline.app.data.Metric
+import com.baseline.app.data.Profile
 import com.baseline.app.logic.ExperimentEngine
 import com.baseline.app.logic.Format
 import com.baseline.app.logic.Insights
@@ -80,11 +81,22 @@ object Export {
     }
 
     /** A one-pager a clinician could actually read. Free, always. */
-    fun summary(checkins: List<Checkin>, experiments: List<Experiment>): String = buildString {
+    fun summary(
+        checkins: List<Checkin>,
+        experiments: List<Experiment>,
+        profile: Profile = Profile()
+    ): String = buildString {
         val today = java.time.LocalDate.now()
         appendLine("BASELINE — PERSONAL SUMMARY")
         appendLine("Generated ${Format.isoDate(today)} · self-tracked, not a clinical record")
         appendLine("=".repeat(46))
+        appendLine()
+        profile.age?.let { age ->
+            appendLine("AGE: $age (${profile.band?.label ?: "—"})")
+        }
+        if (profile.problems.isNotEmpty()) {
+            appendLine("WORKING ON: ${profile.problems.joinToString(", ") { it.label }}")
+        }
         appendLine()
         appendLine("LOGGED DAYS: ${checkins.count { !it.isEmpty }}")
         appendLine()

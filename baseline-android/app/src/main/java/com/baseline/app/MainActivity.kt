@@ -67,6 +67,7 @@ import com.baseline.app.ui.ExperimentsScreen
 import com.baseline.app.ui.Export
 import com.baseline.app.ui.LockScreen
 import com.baseline.app.ui.NewExperimentScreen
+import com.baseline.app.ui.OnboardingScreen
 import com.baseline.app.ui.Palette
 import com.baseline.app.ui.ProgramsScreen
 import com.baseline.app.ui.SettingsScreen
@@ -91,6 +92,7 @@ private sealed interface Screen {
     data object NewExperiment : Screen
     data object Coach : Screen
     data object Settings : Screen
+    data object EditProfile : Screen
     data class ExperimentDetail(val id: String) : Screen
     data class Evidence(val item: EvidenceItem) : Screen
 }
@@ -102,6 +104,7 @@ private fun AppRoot(vm: BaselineViewModel, state: UiState) {
     var showFocusPicker by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     var unlocked by remember { mutableStateOf(false) }
+    var onboardingDismissed by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     fun exportCsv() = vm.allCheckins { checkins ->
@@ -124,7 +127,7 @@ private fun AppRoot(vm: BaselineViewModel, state: UiState) {
             Export.share(
                 context,
                 "baseline-summary-${Format.today()}.txt",
-                Export.summary(checkins, experiments),
+                Export.summary(checkins, experiments, state.profile),
                 "text/plain"
             )
         }
@@ -132,6 +135,18 @@ private fun AppRoot(vm: BaselineViewModel, state: UiState) {
 
     if (state.lockEnabled && !unlocked) {
         LockScreen(onUnlocked = { unlocked = true })
+        return
+    }
+
+    // First run: personalisation is offered once, never forced.
+    if (state.needsOnboarding && !onboardingDismissed && !state.loading) {
+        OnboardingScreen(
+            onDone = { profile ->
+                vm.saveProfile(profile)
+                onboardingDismissed = true
+            },
+            onSkip = { onboardingDismissed = true }
+        )
         return
     }
 
@@ -173,7 +188,17 @@ private fun AppRoot(vm: BaselineViewModel, state: UiState) {
             onOpenCoach = { screen = Screen.Coach },
             onExportCsv = { exportCsv() },
             onExportJson = { exportJson() },
-            onExportSummary = { exportSummary() }
+            onExportSummary = { exportSummary() },
+            onEditProfile = { screen = Screen.EditProfile }
+        )
+
+        Screen.EditProfile -> OnboardingScreen(
+            initial = state.profile,
+            onDone = { profile ->
+                vm.saveProfile(profile)
+                screen = Screen.Tabs
+            },
+            onSkip = { screen = Screen.Tabs }
         )
 
         is Screen.ExperimentDetail -> ExperimentDetailScreen(

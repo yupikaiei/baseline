@@ -51,7 +51,8 @@ fun SettingsScreen(
     onOpenCoach: () -> Unit,
     onExportCsv: () -> Unit,
     onExportJson: () -> Unit,
-    onExportSummary: () -> Unit
+    onExportSummary: () -> Unit,
+    onEditProfile: () -> Unit
 ) {
     val context = LocalContext.current
     var apiKey by remember { mutableStateOf("") }
@@ -105,6 +106,29 @@ fun SettingsScreen(
                     .background(Palette.AccentDim.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
                     .padding(10.dp)
             ) { Text(it, color = Palette.Text, fontSize = 12.sp) }
+        }
+
+        SectionLabel("Profile")
+        CardBox {
+            Column {
+                val band = state.profile.band
+                Text(
+                    if (band == null) "No age set" else "Age band: ${band.label}",
+                    color = Palette.Text, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold
+                )
+                if (band != null) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(band.note, color = Palette.TextDim, fontSize = 11.5.sp, lineHeight = 17.sp)
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    if (state.profile.problems.isEmpty()) "Nothing selected — showing the general rotation."
+                    else "Working on: " + state.profile.problems.joinToString(", ") { it.label },
+                    color = Palette.TextDim, fontSize = 12.sp, lineHeight = 18.sp
+                )
+                Spacer(Modifier.height(12.dp))
+                GhostSmallButton("Edit profile") { onEditProfile() }
+            }
         }
 
         SectionLabel("Privacy")

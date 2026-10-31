@@ -52,7 +52,7 @@ Toolchain: AGP 8.13.2, Kotlin 2.2.21, Compose BOM 2025.12.01, Gradle 8.14.
 ## Tests
 
 ```bash
-./gradlew :app:testDebugUnitTest     # 69 JVM tests
+./gradlew :app:testDebugUnitTest     # 93 JVM tests
 ```
 
 Plain JUnit on the JVM — no instrumentation, no emulator, a few seconds. The statistics are the part
@@ -83,7 +83,46 @@ scheduling, coach retrieval and safety routing, CSV/JSON parsing, and streak mat
 | **App lock** — device PIN/pattern/password gate | ✅ |
 | **Run length** — consecutive days, resets without penalty | ✅ |
 | **Health Connect** — prefill sleep and training from a watch (read-only, confirm required) | ✅ |
+| **Profile** — age band + up to three problems, drives cards, ordering and the coach | ✅ |
 | Local SQLite | ✅ |
+
+## Personalisation
+
+First launch asks two things, both skippable: an age band, and up to three problems.
+
+Age changes what the app leads with, and the framing is drawn from what actually kills men at
+each age (NVSR 73(10), male deaths 2022) rather than generic life-stage copy:
+
+| Band | What the app says |
+|---|---|
+| 18–29 | Injury and suicide lead, not heart disease. Decades of runway left. |
+| 30–39 | Heart disease enters the top three at 35–44; numbers drift while you feel fine. |
+| 40–49 | Obesity peaks here; chronic liver disease enters the top ten at 45. |
+| 50–59 | Heart disease leads from the mid-50s; blood pressure stops being optional. |
+| 60+ | Strength preservation and screening cadence beat intensity. |
+
+Problems are limited to what the evidence library can actually speak to — ten of them, each
+mapping to graded items and a program. Fertility and hair loss are deliberately absent: the PRD
+covers them, but no evidence item supports them yet, and offering a problem the app cannot
+answer honestly is theatre.
+
+### Ranking: measured data outranks what you say about yourself
+
+```
+1. Drift        your own logs contradict your theory
+2. Program      you committed to this block
+3. Problem      what you selected (cold start, and the default)
+4. Rotation     one day in seven, so nothing is starved
+```
+
+The rotation slot is the important one. An app that only shows you content matching your
+self-diagnosis becomes an echo chamber that flatters your existing theory — the opposite of what
+a measurement tool should do. Every card also shows *why* it appeared ("You said: Sleep",
+"Rotation — so you see things you did not ask about"), so the ordering is never mysterious.
+
+The profile also reorders the Baseline tab (your focus metrics first, marked), puts the relevant
+program at the top of the catalogue, and is passed to the coach as context — with the instruction
+to point out when your tracked data contradicts the problem you selected.
 
 ## Wearables (Health Connect)
 
@@ -145,6 +184,7 @@ app/src/main/java/com/baseline/app/
     Db.kt                      SQLiteOpenHelper + typed DAO
     EvidenceLibrary.kt         the 18 launch items
     Programs.kt                the 5 guided blocks
+    Profile.kt                 age bands, problems, profile persistence
     LlmClient.kt               BYOK OpenAI-compatible client
     Backup.kt                  daily snapshots + rotation + restore
     HealthConnectSource.kt     read-only Health Connect bridge (sleep + exercise)
@@ -154,6 +194,7 @@ app/src/main/java/com/baseline/app/
     Insights.kt                daily-card selection (drift > program step > rotation)
     Coach.kt                   retrieval, stopwords, emergency/dosing safety, system prompt
     HealthMapping.kt           sleep efficiency -> quality, exercise minutes -> training
+    Personalisation.kt         problem cards, ranking, program recommendation, coach context
     Importers.kt               CSV + JSON parsing, streak maths
     Format.kt                  metric-aware formatting ("1h10", "+0.4")
   ui/
@@ -164,7 +205,8 @@ app/src/main/java/com/baseline/app/
     ExperimentDetailScreen.kt  result, CI bar, locked declaration
     EvidenceScreen.kt          library + detail sheet
     CoachScreen.kt             chat over the library or a BYOK model
-    SettingsScreen.kt          lock, run length, coach key, backups, import/export
+    SettingsScreen.kt          profile, lock, run length, coach key, backups, import/export
+    OnboardingScreen.kt        age + problems, doubles as the profile editor
     LockScreen.kt              device-credential gate
     Export.kt                  CSV / JSON / summary + share intent
 app/src/test/java/com/baseline/app/

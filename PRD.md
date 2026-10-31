@@ -451,9 +451,11 @@ Built as a **native Kotlin + Jetpack Compose** app in [`baseline-android/`](base
 | Import (CSV / JSON restore), automatic daily backup | ✅ |
 | App lock, run length | ✅ |
 | Health Connect prefill (read-only, confirm required) | ✅ |
+| Profile: age band + problems drive cards, ordering, programs and coach | ✅ |
 
-64 JVM unit tests cover statistics, arm assignment, drift, card precedence, program scheduling,
-coach retrieval and safety routing, import parsing and streak maths. Release APK **12.5 MB**.
+93 JVM unit tests cover statistics, arm assignment, drift, card precedence, program scheduling,
+coach retrieval and safety routing, import parsing, streak maths, and personalisation
+(age-band boundaries, problem→evidence integrity, and the ranking order). Release APK **12.5 MB**.
 
 **Deviations from the principles in §3, made deliberately:**
 

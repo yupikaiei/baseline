@@ -10,10 +10,12 @@ import com.baseline.app.data.Experiment
 import com.baseline.app.data.ExperimentStatus
 import com.baseline.app.data.LlmClient
 import com.baseline.app.data.Metric
+import com.baseline.app.data.Profile
 import com.baseline.app.data.programById
 import com.baseline.app.logic.Coach
 import com.baseline.app.logic.CoachReply
 import com.baseline.app.logic.Format
+import com.baseline.app.logic.Personalisation
 import com.baseline.app.logic.Importers
 import com.baseline.app.logic.Streaks
 import kotlinx.coroutines.Dispatchers
@@ -40,8 +42,12 @@ data class UiState(
     val coachConfigured: Boolean = false,
     val coachModel: String = "",
     val backups: List<File> = emptyList(),
-    val lastBackupLabel: String = "never"
+    val lastBackupLabel: String = "never",
+    val profile: Profile = Profile()
 ) {
+    /** First run, or someone who skipped the questions. */
+    val needsOnboarding: Boolean get() = !profile.isComplete
+
     val todayCheckin: Checkin? get() = checkins.firstOrNull { it.date == today }
     val loggedDates: Set<String> get() = checkins.map { it.date }.toSet()
 
@@ -100,7 +106,11 @@ class BaselineViewModel(app: Application) : AndroidViewModel(app) {
                     lockEnabled = db.setting("lock_enabled") == "true",
                     apiKey = db.setting("coach_api_key"),
                     model = db.setting("coach_model"),
-                    backups = Backup.list(getApplication())
+                    backups = Backup.list(getApplication()),
+                    profile = Profile.fromSettings(
+                        db.setting(Profile.KEY_BIRTH_YEAR),
+                        db.setting(Profile.KEY_PROBLEMS)
+                    )
                 )
             }
             _state.value = _state.value.copy(
@@ -118,7 +128,8 @@ class BaselineViewModel(app: Application) : AndroidViewModel(app) {
                 coachModel = data.model ?: "",
                 backups = data.backups,
                 lastBackupLabel = data.backups.firstOrNull()?.name
-                    ?.removePrefix("baseline-")?.removeSuffix(".json") ?: "never"
+                    ?.removePrefix("baseline-")?.removeSuffix(".json") ?: "never",
+                profile = data.profile
             )
         }
     }
@@ -134,7 +145,8 @@ class BaselineViewModel(app: Application) : AndroidViewModel(app) {
         val lockEnabled: Boolean,
         val apiKey: String?,
         val model: String?,
-        val backups: List<File>
+        val backups: List<File>,
+        val profile: Profile
     )
 
     // ---------------- check-ins ----------------
@@ -197,6 +209,16 @@ class BaselineViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---------------- settings ----------------
+
+    fun saveProfile(profile: Profile) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                profile.toSettings().forEach { (k, v) -> db.setSetting(k, v) }
+                db.setSetting("profile_done", "true")
+            }
+            reload()
+        }
+    }
 
     fun setToggle(key: String, value: Boolean) = write(key, if (value) "true" else "false")
 
@@ -295,7 +317,9 @@ class BaselineViewModel(app: Application) : AndroidViewModel(app) {
         val config = withContext(Dispatchers.IO) { coachConfig() }
         if (!config.isConfigured) return Coach.offlineAnswer(question)
 
-        return LlmClient.ask(config, Coach.systemPrompt(), question).fold(
+        val profile = _state.value.profile
+        val system = Coach.systemPrompt() + "\n\n" + Personalisation.coachContext(profile)
+        return LlmClient.ask(config, system, question).fold(
             onSuccess = { text ->
                 CoachReply(
                     text = text,

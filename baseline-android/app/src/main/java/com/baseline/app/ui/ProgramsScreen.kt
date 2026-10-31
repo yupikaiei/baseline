@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.baseline.app.UiState
 import com.baseline.app.data.Program
 import com.baseline.app.data.programs
+import com.baseline.app.logic.Personalisation
 
 @Composable
 fun ProgramsScreen(
@@ -65,12 +66,20 @@ fun ProgramsScreen(
             }
         }
 
-        programs.filter { it.id != active?.id }.forEach { p ->
-            item {
-                ProgramCard(p, isActive = false) { onStart(p.id) }
-                Spacer(Modifier.height(10.dp))
+        val recommendation = Personalisation.programRecommendation(state.profile)
+        Personalisation.programsFor(state.profile)
+            .filter { it.id != active?.id }
+            .forEach { p ->
+                item {
+                    val isRec = recommendation?.program?.id == p.id
+                    ProgramCard(
+                        program = p,
+                        isActive = false,
+                        reason = if (isRec) "Recommended — ${recommendation?.reason}" else null
+                    ) { onStart(p.id) }
+                    Spacer(Modifier.height(10.dp))
+                }
             }
-        }
     }
 }
 
@@ -214,9 +223,18 @@ private fun ActiveProgramCard(
 }
 
 @Composable
-private fun ProgramCard(program: Program, isActive: Boolean, onStart: () -> Unit) {
-    CardBox {
+private fun ProgramCard(
+    program: Program,
+    isActive: Boolean,
+    reason: String? = null,
+    onStart: () -> Unit
+) {
+    CardBox(borderColor = if (reason != null) Palette.Accent.copy(alpha = 0.4f) else Palette.Line) {
         Column {
+            if (reason != null) {
+                Text(reason, color = Palette.Accent, fontSize = 10.5.sp, lineHeight = 15.sp)
+                Spacer(Modifier.height(8.dp))
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     program.title, color = Palette.Text, fontSize = 15.sp,

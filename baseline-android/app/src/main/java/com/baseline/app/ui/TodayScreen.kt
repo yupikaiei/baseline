@@ -54,7 +54,8 @@ fun TodayScreen(
     val card = Insights.dailyCard(
         checkins = state.checkins,
         programStep = programStep,
-        programDoneToday = state.programDone.contains(state.programDay)
+        programDoneToday = state.programDone.contains(state.programDay),
+        profile = state.profile
     )
     val todayValue = state.todayCheckin?.valueOf(focus)
 
@@ -62,6 +63,20 @@ fun TodayScreen(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp, 8.dp, 16.dp, 100.dp)
     ) {
+        state.profile.band?.let { band ->
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val label = when {
+                        state.profile.problems.isEmpty() -> band.label + " · general"
+                        state.profile.problems.size == 1 ->
+                            band.label + " · " + state.profile.problems.first().label
+                        else -> band.label + " · " + state.profile.problems.first().label +
+                            " +" + (state.profile.problems.size - 1)
+                    }
+                    PillarTag(label)
+                }
+            }
+        }
         item {
             BaselineRing(
                 value = todayValue,
@@ -81,7 +96,18 @@ fun TodayScreen(
             }
             Spacer(Modifier.height(20.dp))
         }
-        item { DailyCardView(card, onOpenEvidence) }
+        item {
+            DailyCardView(card, onOpenEvidence)
+            card.reason?.let { reason ->
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    reason,
+                    color = Palette.TextDim.copy(alpha = 0.75f),
+                    fontSize = 10.5.sp,
+                    modifier = Modifier.padding(start = 2.dp)
+                )
+            }
+        }
         item {
             Spacer(Modifier.height(18.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -192,9 +218,10 @@ fun BaselineTab(state: UiState) {
             )
             Spacer(Modifier.height(16.dp))
         }
-        Insights.PILLARS.forEach { pillar ->
+        val ordered = state.profile.focusMetrics + Insights.PILLARS.filter { it !in state.profile.focusMetrics }
+        ordered.forEach { pillar ->
             item {
-                PillarTile(state, pillar)
+                PillarTile(state, pillar, highlighted = pillar in state.profile.focusMetrics)
                 Spacer(Modifier.height(10.dp))
             }
         }
@@ -212,13 +239,22 @@ fun BaselineTab(state: UiState) {
 }
 
 @Composable
-private fun PillarTile(state: UiState, metric: Metric) {
+private fun PillarTile(state: UiState, metric: Metric, highlighted: Boolean = false) {
     val snap = ExperimentEngine.snapshot(state.checkins, metric)
     val values = ExperimentEngine.seriesFor(state.checkins, metric, 90)
-    CardBox(borderColor = if (snap.drift.detected) Palette.Warn.copy(alpha = 0.45f) else Palette.Line) {
+    val border = when {
+        snap.drift.detected -> Palette.Warn.copy(alpha = 0.45f)
+        highlighted -> Palette.AccentDim
+        else -> Palette.Line
+    }
+    CardBox(borderColor = border) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(metric.label, color = Palette.Text, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold)
+                if (highlighted && !snap.drift.detected) {
+                    Spacer(Modifier.size(8.dp))
+                    Text("your focus", color = Palette.Accent.copy(alpha = 0.8f), fontSize = 9.5.sp)
+                }
                 if (snap.drift.detected) {
                     Spacer(Modifier.size(8.dp))
                     Box(

@@ -3,6 +3,7 @@ package com.baseline.app.logic
 import com.baseline.app.data.Checkin
 import com.baseline.app.data.Grade
 import com.baseline.app.data.Metric
+import com.baseline.app.data.Profile
 import com.baseline.app.data.ProgramDay
 import java.time.LocalDate
 
@@ -13,7 +14,9 @@ data class DailyCard(
     val action: String,
     val grade: Grade,
     val evidenceId: String? = null,
-    val isDrift: Boolean = false
+    val isDrift: Boolean = false,
+    /** Why this card appeared — shown to the user so the choice is never mysterious. */
+    val reason: String? = null
 )
 
 object Insights {
@@ -31,14 +34,19 @@ object Insights {
         checkins: List<Checkin>,
         today: LocalDate = LocalDate.now(),
         programStep: ProgramDay? = null,
-        programDoneToday: Boolean = false
+        programDoneToday: Boolean = false,
+        profile: Profile = Profile()
     ): DailyCard {
         for (m in PILLARS) {
             val snap = ExperimentEngine.snapshot(checkins, m, today)
             if (!snap.drift.detected) continue
             val up = snap.drift.delta > 0
             val worse = (up && !m.higherIsBetter) || (!up && m.higherIsBetter)
-            if (worse) return driftCard(m, snap)
+            if (worse) {
+                return driftCard(m, snap).copy(
+                    reason = Personalisation.reasonFor(driftCard(m, snap), profile, today)
+                )
+            }
         }
         if (programStep != null && !programDoneToday) {
             return DailyCard(
@@ -47,11 +55,23 @@ object Insights {
                 body = programStep.action,
                 action = programStep.ifThen,
                 grade = Grade.A,
-                evidenceId = null
+                evidenceId = null,
+                reason = Personalisation.reasonFor(
+                    DailyCard("Program", "", "", "", Grade.A), profile, today
+                )
             )
         }
+        // Problem tier: personalised, but one day in seven belongs to the general
+        // rotation so the app cannot become an echo of what the user already thinks.
+        if (profile.problems.isNotEmpty() && !Personalisation.isRotationDay(today)) {
+            val cards = Personalisation.cardsFor(profile)
+            if (cards.isNotEmpty()) {
+                val card = cards[today.dayOfYear % cards.size]
+                return card.copy(reason = Personalisation.reasonFor(card, profile, today))
+            }
+        }
         val idx = today.dayOfYear % BASE_CARDS.size
-        return BASE_CARDS[idx]
+        return BASE_CARDS[idx].copy(reason = Personalisation.reasonFor(BASE_CARDS[idx], profile, today))
     }
 
 

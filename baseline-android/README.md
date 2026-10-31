@@ -44,7 +44,7 @@ The CI build is signed with the **same key** as local builds (stored as the encr
 survives upgrades. This matters: Android refuses an update from a different signer, and the only
 remedy is an uninstall, which deletes the database.
 
-Release APK: **12.5 MB**. Requires Android 8.0+ (minSdk 26, for `java.time` without desugaring).
+Release APK: **14 MB**. Requires Android 8.0+ (minSdk 26, for `java.time` without desugaring).
 Toolchain: AGP 8.13.2, Kotlin 2.2.21, Compose BOM 2025.12.01, Gradle 8.14.
 
 ---
@@ -52,7 +52,7 @@ Toolchain: AGP 8.13.2, Kotlin 2.2.21, Compose BOM 2025.12.01, Gradle 8.14.
 ## Tests
 
 ```bash
-./gradlew :app:testDebugUnitTest     # 64 JVM tests
+./gradlew :app:testDebugUnitTest     # 69 JVM tests
 ```
 
 Plain JUnit on the JVM — no instrumentation, no emulator, a few seconds. The statistics are the part
@@ -82,7 +82,47 @@ scheduling, coach retrieval and safety routing, CSV/JSON parsing, and streak mat
 | **Automatic backup** — daily snapshot, 7 kept, restore from list | ✅ |
 | **App lock** — device PIN/pattern/password gate | ✅ |
 | **Run length** — consecutive days, resets without penalty | ✅ |
+| **Health Connect** — prefill sleep and training from a watch (read-only, confirm required) | ✅ |
 | Local SQLite | ✅ |
+
+## Wearables (Health Connect)
+
+Baseline reads **only** sleep sessions and exercise sessions from Android Health Connect,
+and only when you tap *Fill from watch* while logging a day:
+
+| Watch data | Becomes | Rule |
+|---|---|---|
+| Sleep duration | `sleep_min` | Straight copy |
+| Sleep stages | `sleep_quality` (1–5) | Estimated from **sleep efficiency** = asleep ÷ in bed. Health Connect does not carry Garmin's sleep score, so the app labels this instead of pretending it has one. |
+| Exercise sessions | `training` | ≥45 min in a day ⇒ Hard, any exercise ⇒ Light |
+
+Nothing is written until you press Save, and every prefilled value stays editable. Prefilled days
+are stored with `source='health-connect'` so you can tell them apart from typed ones.
+
+The app requests `READ_SLEEP` and `READ_EXERCISE` **only** — no write permissions, no background
+reads, no other data types. Verified in the release APK:
+
+```
+uses-permission: android.permission.INTERNET
+uses-permission: android.permission.health.READ_SLEEP
+uses-permission: android.permission.health.READ_EXERCISE
+```
+
+**If your watch's companion app doesn't write to Health Connect**, nothing appears and the app says
+so. Check on the phone: *Settings → Security & Privacy → Privacy Controls → Health Connect →
+App permissions* and look for Garmin Connect. Garmin is a closed ecosystem and support varies by
+region and app version — if it isn't listed, the app still works, you just type the numbers.
+
+### Testing without a watch
+
+`app/src/debug/` contains a `SeedHealthActivity` that writes a sample night (23:00–07:30 with
+stages) and a 50-minute exercise session, then reports what Health Connect returns. It lives only
+in the debug source set and debug manifest, so the release APK has neither the class nor the write
+permissions. Launch it with:
+
+```bash
+adb shell am start -n com.baseline.app/.SeedHealthActivity
+```
 
 Not built, and why:
 
@@ -107,11 +147,13 @@ app/src/main/java/com/baseline/app/
     Programs.kt                the 5 guided blocks
     LlmClient.kt               BYOK OpenAI-compatible client
     Backup.kt                  daily snapshots + rotation + restore
+    HealthConnectSource.kt     read-only Health Connect bridge (sleep + exercise)
   logic/                       pure Kotlin, no Android imports → JVM-testable
     Stats.kt                   bands, drift, bootstrap CI, permutation test
     ExperimentEngine.kt        arm assignment by date, analysis, verdict, templates
     Insights.kt                daily-card selection (drift > program step > rotation)
     Coach.kt                   retrieval, stopwords, emergency/dosing safety, system prompt
+    HealthMapping.kt           sleep efficiency -> quality, exercise minutes -> training
     Importers.kt               CSV + JSON parsing, streak maths
     Format.kt                  metric-aware formatting ("1h10", "+0.4")
   ui/

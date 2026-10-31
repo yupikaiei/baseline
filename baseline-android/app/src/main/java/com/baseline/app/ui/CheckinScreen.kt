@@ -1,5 +1,6 @@
 package com.baseline.app.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,19 +29,29 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.health.connect.client.PermissionController
 import com.baseline.app.data.Checkin
+import com.baseline.app.data.HealthConnectSource
+import com.baseline.app.data.HealthPermissions
+import com.baseline.app.data.HealthPrefill
+import com.baseline.app.data.HealthStatus
 import com.baseline.app.data.Training
 import com.baseline.app.logic.Format
+import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 @Composable
 fun CheckinScreen(
@@ -60,6 +71,48 @@ fun CheckinScreen(
     var showLibido by remember { mutableStateOf(existing?.libido != null) }
     var note by remember { mutableStateOf(existing?.note ?: "") }
 
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val source = remember { HealthConnectSource(context) }
+    var healthStatus by remember { mutableStateOf(HealthStatus.UNAVAILABLE) }
+    var prefillBusy by remember { mutableStateOf(false) }
+    var prefillNotes by remember { mutableStateOf<List<String>>(emptyList()) }
+    var prefilled by remember { mutableStateOf(false) }
+
+    fun applyPrefill(p: HealthPrefill) {
+        p.sleepMin?.let { sleepMin = it }
+        p.sleepQuality?.let { sleepQuality = it }
+        p.training?.let { training = it }
+        prefillNotes = p.notes
+        if (!p.isEmpty) prefilled = true
+    }
+
+    fun readAndFill() {
+        prefillBusy = true
+        scope.launch {
+            val target = runCatching { LocalDate.parse(date) }.getOrElse { LocalDate.now() }
+            val result = runCatching { source.read(target) }.getOrElse {
+                HealthPrefill(notes = listOf("Could not read Health Connect: ${it.message?.take(80)}"))
+            }
+            applyPrefill(result)
+            prefillBusy = false
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        PermissionController.createRequestPermissionResultContract()
+    ) { granted ->
+        if (granted.containsAll(HealthPermissions.READ)) readAndFill()
+        else prefillNotes = listOf("Access not granted. You can still log everything by hand.")
+    }
+
+    LaunchedEffect(Unit) {
+        healthStatus = source.status()
+        if (healthStatus == HealthStatus.AVAILABLE && source.hasPermissions()) {
+            prefillNotes = listOf("Connected. Tap to fill today's sleep and training from Health Connect.")
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -72,6 +125,27 @@ fun CheckinScreen(
             color = Palette.TextDim, fontSize = 12.sp
         )
         Spacer(Modifier.height(16.dp))
+
+        if (healthStatus != HealthStatus.UNAVAILABLE) {
+            PrefillCard(
+                status = healthStatus,
+                busy = prefillBusy,
+                prefilled = prefilled,
+                notes = prefillNotes,
+                onFill = {
+                    when {
+                        healthStatus == HealthStatus.NEEDS_PROVIDER_UPDATE -> {
+                            prefillNotes = listOf("Update Health Connect from the Play Store first.")
+                        }
+                        else -> scope.launch {
+                            if (source.hasPermissions()) readAndFill()
+                            else permissionLauncher.launch(HealthPermissions.READ)
+                        }
+                    }
+                }
+            )
+            Spacer(Modifier.height(14.dp))
+        }
 
         // Sleep
         CardBox {
@@ -158,7 +232,8 @@ fun CheckinScreen(
                         alcoholUnits = alcohol,
                         training = training,
                         libido = if (showLibido) libido else null,
-                        note = note.trim().ifEmpty { null }
+                        note = note.trim().ifEmpty { null },
+                        source = if (prefilled) "health-connect" else "typed"
                     )
                 )
             },
@@ -318,6 +393,71 @@ private fun TrainingRow(value: Training, onPick: (Training) -> Unit) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PrefillCard(
+    status: HealthStatus,
+    busy: Boolean,
+    prefilled: Boolean,
+    notes: List<String>,
+    onFill: () -> Unit
+) {
+    CardBox(borderColor = if (prefilled) Palette.Accent.copy(alpha = 0.45f) else Palette.Line) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PillarTag(if (prefilled) "Filled from Health Connect" else "Health Connect")
+                Spacer(Modifier.weight(1f))
+                if (status == HealthStatus.NEEDS_PROVIDER_UPDATE) {
+                    Text("update needed", color = Palette.Warn, fontSize = 10.sp)
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+
+            if (notes.isEmpty()) {
+                Text(
+                    "Fill sleep and training from your watch, then check them before saving.",
+                    color = Palette.TextDim, fontSize = 12.5.sp, lineHeight = 18.sp
+                )
+            } else {
+                notes.forEach { note ->
+                    Text(
+                        "· $note",
+                        color = Palette.TextDim,
+                        fontSize = 11.5.sp,
+                        lineHeight = 17.sp,
+                        modifier = Modifier.padding(bottom = 3.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .border(1.dp, Palette.AccentDim, RoundedCornerShape(12.dp))
+                    .clickable(enabled = !busy) { onFill() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    when {
+                        busy -> "Reading…"
+                        prefilled -> "Re-read from watch"
+                        else -> "Fill from watch"
+                    },
+                    color = if (busy) Palette.TextDim else Palette.Accent,
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Read-only, and only when you tap this. Nothing is saved until you press Save.",
+                color = Palette.TextDim.copy(alpha = 0.8f), fontSize = 10.5.sp, lineHeight = 15.sp
+            )
         }
     }
 }

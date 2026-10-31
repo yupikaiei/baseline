@@ -7,6 +7,7 @@ import com.baseline.app.data.Training
 import com.baseline.app.data.programById
 import com.baseline.app.data.programs
 import com.baseline.app.logic.Coach
+import com.baseline.app.logic.HealthMapping
 import com.baseline.app.logic.Importers
 import com.baseline.app.logic.ImportException
 import com.baseline.app.logic.Streaks
@@ -287,5 +288,51 @@ class RetrievalRelevanceTest {
     fun strengthQuestionFindsWhoGuideline() {
         val hits = Coach.retrieve("how many strength sessions per week")
         assertTrue(hits.any { it.id == "move-two-sessions" || it.id == "move-who-150" })
+    }
+}
+
+class HealthMappingTest {
+
+    @Test
+    fun efficiencyBandsMapToQuality() {
+        assertEquals(5, HealthMapping.sleepQualityFromEfficiency(95.0))
+        assertEquals(5, HealthMapping.sleepQualityFromEfficiency(90.0))
+        assertEquals(4, HealthMapping.sleepQualityFromEfficiency(89.9))
+        assertEquals(4, HealthMapping.sleepQualityFromEfficiency(85.0))
+        assertEquals(3, HealthMapping.sleepQualityFromEfficiency(84.9))
+        assertEquals(3, HealthMapping.sleepQualityFromEfficiency(75.0))
+        assertEquals(2, HealthMapping.sleepQualityFromEfficiency(74.9))
+        assertEquals(2, HealthMapping.sleepQualityFromEfficiency(65.0))
+        assertEquals(1, HealthMapping.sleepQualityFromEfficiency(64.9))
+    }
+
+    @Test
+    fun nonsenseEfficiencyYieldsNoQuality() {
+        assertEquals(null, HealthMapping.sleepQualityFromEfficiency(0.0))
+        assertEquals(null, HealthMapping.sleepQualityFromEfficiency(-5.0))
+        assertEquals(null, HealthMapping.sleepQualityFromEfficiency(Double.NaN))
+    }
+
+    @Test
+    fun efficiencyIsGuardedAgainstBadInput() {
+        assertEquals(null, HealthMapping.efficiencyPercent(0, 0))
+        assertEquals(null, HealthMapping.efficiencyPercent(-1, 0))
+        assertEquals(90.0, HealthMapping.efficiencyPercent(1000, 100)!!, 1e-9)
+    }
+
+    @Test
+    fun awakeLongerThanSessionIsClamped() {
+        // A corrupt record must not produce a negative or >100% efficiency.
+        assertEquals(0.0, HealthMapping.efficiencyPercent(1000, 5000)!!, 1e-9)
+    }
+
+    @Test
+    fun trainingReflectsSessionLength() {
+        assertEquals(null, HealthMapping.trainingFromMinutes(0))
+        assertEquals(null, HealthMapping.trainingFromMinutes(-10))
+        assertEquals(Training.LIGHT, HealthMapping.trainingFromMinutes(1))
+        assertEquals(Training.LIGHT, HealthMapping.trainingFromMinutes(44))
+        assertEquals(Training.HARD, HealthMapping.trainingFromMinutes(45))
+        assertEquals(Training.HARD, HealthMapping.trainingFromMinutes(120))
     }
 }

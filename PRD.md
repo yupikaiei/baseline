@@ -450,6 +450,7 @@ Built as a **native Kotlin + Jetpack Compose** app in [`baseline-android/`](base
 | Coach — BYOK model, grounded, with offline fallback | ✅ |
 | Import (CSV / JSON restore), automatic daily backup | ✅ |
 | App lock, run length | ✅ |
+| Health Connect prefill (read-only, confirm required) | ✅ |
 
 64 JVM unit tests cover statistics, arm assignment, drift, card precedence, program scheduling,
 coach retrieval and safety routing, import parsing and streak maths. Release APK **12.5 MB**.
@@ -464,6 +465,11 @@ coach retrieval and safety routing, import parsing and streak maths. Release APK
   dosing) runs locally and never reaches the network.
 - **`INTERNET` permission is now requested.** This weakens the previous "nothing can leave the device"
   claim: nothing does leave unless you press send with a key configured, but the capability exists.
+
+**Wearables arrived via Health Connect** (§5.2 item 18), not a vendor API: Garmin exposes no consumer
+API, so the app reads sleep and exercise from the system health store and pre-fills the check-in. The
+confirm step is deliberate — auto-filling the field would remove the daily act of logging, which §2.1
+identifies as the active ingredient.
 
 **Still not built:** lab integration (needs a diagnostic partner and would drag the product back to
 diagnosis) and community (no other users).

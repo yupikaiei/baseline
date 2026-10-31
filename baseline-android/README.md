@@ -30,6 +30,20 @@ Release build (signed with the local debug key — fine for personal use):
 adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
+## Install on your phone
+
+Every push to `main` builds an APK in CI and attaches it to the rolling release:
+
+**<https://github.com/yupikaiei/baseline/releases/tag/latest>**
+
+Open that link on the phone, download the `.apk`, tap it, and allow installing from that source
+when Android prompts. Nothing else is needed — the release asset downloads without a GitHub session.
+
+CI keeps the signing key in the Actions cache so consecutive builds share a signature and install
+over each other. If that cache is evicted the key is regenerated, the signature changes, and Android
+will refuse the update until the old app is uninstalled. The APK is also uploaded as a workflow
+artifact on every run.
+
 Release APK: **12.5 MB**. Requires Android 8.0+ (minSdk 26, for `java.time` without desugaring).
 Toolchain: AGP 8.13.2, Kotlin 2.2.21, Compose BOM 2025.12.01, Gradle 8.14.
 

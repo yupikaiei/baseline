@@ -2,6 +2,8 @@ package com.baseline.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -10,6 +12,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -75,6 +82,14 @@ import com.baseline.app.ui.TodayScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Own edge-to-edge explicitly. Android 15+ forces it for targetSdk 35+,
+        // and leaving it to the platform put the custom header beneath the status
+        // bar on devices like the Fairphone 5. Handling insets here makes the
+        // result identical across devices and versions.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
         super.onCreate(savedInstanceState)
         setContent {
             BaselineTheme {
@@ -153,7 +168,7 @@ private fun AppRoot(vm: BaselineViewModel, state: UiState) {
     BackHandler(enabled = screen != Screen.Tabs) { screen = Screen.Tabs }
 
     when (val current = screen) {
-        Screen.Checkin -> CheckinScreen(
+        Screen.Checkin -> FullScreen { CheckinScreen(
             existing = state.todayCheckin,
             date = state.today,
             onSave = { checkin ->
@@ -161,27 +176,27 @@ private fun AppRoot(vm: BaselineViewModel, state: UiState) {
                 screen = Screen.Tabs
             },
             onCancel = { screen = Screen.Tabs }
-        )
+        ) }
 
-        Screen.NewExperiment -> NewExperimentScreen(
+        Screen.NewExperiment -> FullScreen { NewExperimentScreen(
             onStart = { experiment ->
                 vm.startExperiment(experiment)
                 screen = Screen.Tabs
                 tab = 2
             },
             onCancel = { screen = Screen.Tabs }
-        )
+        ) }
 
-        Screen.Coach -> CoachScreen(
+        Screen.Coach -> FullScreen { CoachScreen(
             state = state,
             vm = vm,
             onOpenEvidence = { id ->
                 evidenceLibrary.firstOrNull { it.id == id }?.let { screen = Screen.Evidence(it) }
             },
             onOpenSettings = { screen = Screen.Settings }
-        )
+        ) }
 
-        Screen.Settings -> SettingsScreen(
+        Screen.Settings -> FullScreen { SettingsScreen(
             state = state,
             vm = vm,
             onClose = { screen = Screen.Tabs },
@@ -190,31 +205,35 @@ private fun AppRoot(vm: BaselineViewModel, state: UiState) {
             onExportJson = { exportJson() },
             onExportSummary = { exportSummary() },
             onEditProfile = { screen = Screen.EditProfile }
-        )
+        ) }
 
-        Screen.EditProfile -> OnboardingScreen(
+        Screen.EditProfile -> FullScreen { OnboardingScreen(
             initial = state.profile,
             onDone = { profile ->
                 vm.saveProfile(profile)
                 screen = Screen.Tabs
             },
             onSkip = { screen = Screen.Tabs }
-        )
+        ) }
 
-        is Screen.ExperimentDetail -> ExperimentDetailScreen(
+        is Screen.ExperimentDetail -> FullScreen { ExperimentDetailScreen(
             state = state,
             experimentId = current.id,
             onStop = { vm.stopExperiment(it) },
             onBack = { screen = Screen.Tabs }
-        )
+        ) }
 
-        is Screen.Evidence -> EvidenceDetailSheet(current.item) { screen = Screen.Tabs }
+        is Screen.Evidence -> FullScreen { EvidenceDetailSheet(current.item) { screen = Screen.Tabs } }
 
         Screen.Tabs -> Scaffold(
             containerColor = Palette.Bg,
             topBar = {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    modifier = Modifier
+                        // A plain Row does not consume insets the way TopAppBar
+                        // does — this is exactly why the header sat under the clock.
+                        .windowInsetsPadding(WindowInsets.statusBars)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
@@ -265,7 +284,11 @@ private fun AppRoot(vm: BaselineViewModel, state: UiState) {
                 }
             },
             bottomBar = {
-                NavigationBar(containerColor = Palette.Surface, contentColor = Palette.Text) {
+                NavigationBar(
+                    containerColor = Palette.Surface,
+                    contentColor = Palette.Text,
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+                ) {
                     NavItem("Today", Icons.Filled.RadioButtonChecked, Icons.Filled.RadioButtonUnchecked, tab == 0) { tab = 0 }
                     NavItem("Baseline", Icons.Filled.ShowChart, Icons.Filled.ShowChart, tab == 1) { tab = 1 }
                     NavItem("Trials", Icons.Filled.Science, Icons.Filled.Science, tab == 2) { tab = 2 }
@@ -336,6 +359,21 @@ private fun AppRoot(vm: BaselineViewModel, state: UiState) {
             }
         )
     }
+}
+
+/**
+ * Full-screen routes draw their own background edge-to-edge, so each one needs the
+ * system insets applied. Wrapping them centrally keeps this to a single definition
+ * instead of drifting per screen.
+ */
+@Composable
+private fun FullScreen(content: @Composable () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Palette.Bg)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+    ) { content() }
 }
 
 @Composable

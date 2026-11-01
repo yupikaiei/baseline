@@ -122,7 +122,8 @@ fun CheckinScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.safeDrawing)
+            // safeDrawing is applied by FullScreen in MainActivity; only the
+            // keyboard inset is this screen's own concern.
             .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = Spacing.gutter, vertical = Spacing.gutter)

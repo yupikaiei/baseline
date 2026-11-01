@@ -86,6 +86,24 @@ scheduling, coach retrieval and safety routing, CSV/JSON parsing, and streak mat
 | **Profile** — age band + up to three problems, drives cards, ordering and the coach | ✅ |
 | Local SQLite | ✅ |
 
+## System insets
+
+The app draws **edge-to-edge** and owns its inset handling explicitly (`enableEdgeToEdge` in
+`MainActivity`). This is not cosmetic: Android 15+ forces edge-to-edge for `targetSdk` 35+, and
+leaving it to the platform put the custom header underneath the status bar on a Fairphone 5 while
+looking fine on an emulator.
+
+| Where | Inset applied |
+|---|---|
+| Tab shell header Row | `WindowInsets.statusBars` |
+| Bottom navigation | `WindowInsets.navigationBars` |
+| Every full-screen route | `WindowInsets.safeDrawing` via the shared `FullScreen` wrapper |
+| Check-in form | `imePadding` only — `safeDrawing` comes from the wrapper |
+
+A plain `Row` does not consume insets the way Material's `TopAppBar` does, which is why the header
+needed explicit padding. The rule for new screens: use the `FullScreen` wrapper, and never apply
+`safeDrawing` a second time inside it.
+
 ## UI standards
 
 Every interactive element is at least **48 x 48 dp**, the Material minimum, and screens use a

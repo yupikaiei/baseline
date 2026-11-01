@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -127,7 +128,7 @@ fun ExperimentsScreen(
 @Composable
 private fun ExperimentCard(state: UiState, e: Experiment, onOpen: () -> Unit) {
     val analysis = ExperimentEngine.analyse(e, state.checkins)
-    CardBox(modifier = Modifier.clickable { onOpen() }) {
+    CardBox(modifier = Modifier.heightIn(min = 96.dp).clickable { onOpen() }) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(

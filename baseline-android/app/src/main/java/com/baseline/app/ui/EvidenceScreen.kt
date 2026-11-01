@@ -2,6 +2,8 @@ package com.baseline.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,7 +47,7 @@ fun EvidenceScreen(onOpen: (EvidenceItem) -> Unit) {
         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp, 8.dp, 0.dp, 100.dp)
     ) {
         item {
-            Column(Modifier.padding(horizontal = 16.dp)) {
+            Column(Modifier.padding(horizontal = Spacing.gutter)) {
                 Text(
                     "Evidence", color = Palette.Text, fontSize = 26.sp,
                     fontWeight = FontWeight.SemiBold, letterSpacing = (-0.6).sp
@@ -59,25 +61,37 @@ fun EvidenceScreen(onOpen: (EvidenceItem) -> Unit) {
                 Spacer(Modifier.height(14.dp))
             }
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = Spacing.gutter),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                pillars.take(5).forEach { p ->
+                // Every pillar, and scrollable: previously only the first five
+                // rendered and the rest could not be reached at all.
+                pillars.forEach { p ->
                     val on = selectedPillar.value == p
                     Box(
                         modifier = Modifier
+                            .heightIn(min = Spacing.touchTarget)
                             .background(
                                 if (on) Palette.AccentDim else Palette.Surface,
-                                RoundedCornerShape(9.dp)
+                                RoundedCornerShape(12.dp)
                             )
-                            .border(1.dp, if (on) Palette.AccentDim else Palette.Line, RoundedCornerShape(9.dp))
+                            .border(
+                                1.dp,
+                                if (on) Palette.Accent.copy(alpha = 0.5f) else Palette.Line,
+                                RoundedCornerShape(12.dp)
+                            )
                             .clickable { selectedPillar.value = p }
-                            .padding(horizontal = 11.dp, vertical = 7.dp)
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
                             p,
                             color = if (on) Palette.Accent else Palette.TextDim,
-                            fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
@@ -89,8 +103,8 @@ fun EvidenceScreen(onOpen: (EvidenceItem) -> Unit) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 8.dp)
+                        .padding(horizontal = Spacing.gutter)
+                        .padding(bottom = Spacing.betweenTargets)
                         .background(Palette.Surface, RoundedCornerShape(14.dp))
                         .border(1.dp, Palette.Line, RoundedCornerShape(14.dp))
                         .clickable { onOpen(item) }
@@ -125,16 +139,18 @@ fun EvidenceDetailSheet(item: EvidenceItem, onClose: () -> Unit) {
             .fillMaxSize()
             .background(Palette.Bg)
             .verticalScroll(rememberScrollState())
-            .padding(20.dp)
+            .padding(Spacing.gutter)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.weight(1f))
-            Icon(
-                Icons.Filled.Close,
-                contentDescription = "Close",
-                tint = Palette.TextDim,
-                modifier = Modifier.size(22.dp).clickable { onClose() }
-            )
+            TouchTarget(onClick = onClose) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Close",
+                    tint = Palette.TextDim,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {

@@ -171,10 +171,12 @@ private fun DailyCardView(card: DailyCard, onOpenEvidence: (String) -> Unit) {
                 GradeChip(card.grade)
                 Spacer(Modifier.weight(1f))
                 card.evidenceId?.let { id ->
-                    Icon(
-                        Icons.Filled.Info, contentDescription = "Evidence",
-                        tint = Palette.TextDim, modifier = Modifier.size(17.dp).clickable { onOpenEvidence(id) }
-                    )
+                    TouchTarget(onClick = { onOpenEvidence(id) }) {
+                        Icon(
+                            Icons.Filled.Info, contentDescription = "Evidence",
+                            tint = Palette.TextDim, modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(12.dp))

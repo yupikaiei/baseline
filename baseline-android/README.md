@@ -86,6 +86,23 @@ scheduling, coach retrieval and safety routing, CSV/JSON parsing, and streak mat
 | **Profile** — age band + up to three problems, drives cards, ordering and the coach | ✅ |
 | Local SQLite | ✅ |
 
+## UI standards
+
+Every interactive element is at least **48 x 48 dp**, the Material minimum, and screens use a
+consistent **16 dp gutter** with 10 dp between tappable rows. Small visuals (info icon, tick,
+chevron) are wrapped in a full-size tap area rather than being clickable at their drawn size —
+see `TouchTarget` and `Spacing` in `Components.kt`.
+
+This is checked on device, not assumed: dumping the UI hierarchy and measuring every
+`clickable="true"` node catches anything that regressed.
+
+Two bugs this found, both real:
+
+- **Evidence filters were unreachable.** The row rendered only the first five pillars and did not
+  scroll, so *Connect* and *Myths* could not be selected at all. Now horizontally scrollable.
+- **Themed rows were 42 dp** on the check-in screen (Material's floor is 48), with 5 dp gutters
+  between adjacent scale buttons — easy to hit the wrong one.
+
 ## Personalisation
 
 First launch asks two things, both skippable: an age band, and up to three problems.

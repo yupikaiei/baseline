@@ -3,6 +3,7 @@ package com.baseline.app.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +31,37 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
+
+/** Layout constants, so spacing is consistent rather than per-screen guesswork. */
+object Spacing {
+    /** Screen gutter on every edge. */
+    val gutter = 16.dp
+    /** Gap between tappable rows — enough to avoid hitting the neighbour. */
+    val betweenTargets = 10.dp
+    /** Material's minimum, and the floor this app holds everywhere. */
+    val touchTarget = 48.dp
+}
+
+/**
+ * Wraps a small visual (icon, tick, chevron) in a full-size tap area without
+ * changing how it looks. Used wherever the thing you see is smaller than the
+ * thing you have to hit.
+ */
+@Composable
+fun TouchTarget(
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = Spacing.touchTarget,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) { content() }
+}
 
 @Composable
 fun GradeChip(grade: Grade, compact: Boolean = false) {

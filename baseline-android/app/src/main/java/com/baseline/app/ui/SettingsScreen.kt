@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -85,7 +86,7 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(horizontal = Spacing.gutter, vertical = Spacing.gutter)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -314,7 +315,7 @@ private fun ToggleRow(
     onChange: (Boolean) -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).heightIn(min = 56.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
@@ -365,9 +366,11 @@ private fun SettingsField(
 private fun PrimarySmallButton(label: String, onClick: () -> Unit) {
     Box(
         Modifier
-            .background(Palette.Accent, RoundedCornerShape(10.dp))
+            .heightIn(min = Spacing.touchTarget)
+            .background(Palette.Accent, RoundedCornerShape(12.dp))
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 18.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(label, color = Color(0xFF06231A), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
@@ -377,9 +380,11 @@ private fun PrimarySmallButton(label: String, onClick: () -> Unit) {
 private fun GhostSmallButton(label: String, onClick: () -> Unit) {
     Box(
         Modifier
-            .border(1.dp, Palette.AccentDim, RoundedCornerShape(10.dp))
+            .heightIn(min = Spacing.touchTarget)
+            .border(1.dp, Palette.AccentDim, RoundedCornerShape(12.dp))
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 18.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(label, color = Palette.Accent, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }

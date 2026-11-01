@@ -9,11 +9,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -116,8 +122,10 @@ fun CheckinScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .imePadding()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(horizontal = Spacing.gutter, vertical = Spacing.gutter)
     ) {
         Text("Log today", color = Palette.Text, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
         Text(
@@ -260,7 +268,7 @@ fun CheckinScreen(
 private fun StepButton(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(44.dp)
+            .size(48.dp)
             .background(Palette.SurfaceAlt, RoundedCornerShape(12.dp))
             .clickable { onClick() },
         contentAlignment = Alignment.Center
@@ -273,9 +281,11 @@ private fun StepButton(icon: androidx.compose.ui.graphics.vector.ImageVector, on
 private fun PresetChip(label: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .background(if (selected) Palette.AccentDim else Palette.SurfaceAlt, RoundedCornerShape(10.dp))
-            .clickable { onClick() }
-            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .widthIn(min = Spacing.touchTarget)
+            .heightIn(min = Spacing.touchTarget)
+            .background(if (selected) Palette.AccentDim else Palette.SurfaceAlt, RoundedCornerShape(12.dp))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
     ) {
         Text(
             label,
@@ -288,17 +298,17 @@ private fun PresetChip(label: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 private fun ScaleRow(label: String, value: Int?, onPick: (Int) -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, color = Palette.TextDim, fontSize = 14.sp, modifier = Modifier.width(96.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.weight(1f)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
             (1..5).forEach { i ->
                 val selected = value == i
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(42.dp)
+                        .height(48.dp)
                         .background(
                             if (selected) Palette.AccentDim else Palette.Surface,
                             RoundedCornerShape(10.dp)
@@ -330,13 +340,13 @@ private fun AlcoholRow(value: Double, onPick: (Double) -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text("Alcohol", color = Palette.TextDim, fontSize = 14.sp, modifier = Modifier.width(96.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.weight(1f)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
             labels.forEachIndexed { i, label ->
                 val selected = value.toInt() == i
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(42.dp)
+                        .height(48.dp)
                         .background(
                             if (selected) Palette.AccentDim else Palette.Surface,
                             RoundedCornerShape(10.dp)
@@ -367,13 +377,13 @@ private fun TrainingRow(value: Training, onPick: (Training) -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text("Training", color = Palette.TextDim, fontSize = 14.sp, modifier = Modifier.width(96.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.weight(1f)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
             Training.entries.forEach { t ->
                 val selected = value == t
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(42.dp)
+                        .height(48.dp)
                         .background(
                             if (selected) Palette.AccentDim else Palette.Surface,
                             RoundedCornerShape(10.dp)
@@ -437,7 +447,7 @@ private fun PrefillCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(44.dp)
+                    .height(48.dp)
                     .border(1.dp, Palette.AccentDim, RoundedCornerShape(12.dp))
                     .clickable(enabled = !busy) { onFill() },
                 contentAlignment = Alignment.Center
